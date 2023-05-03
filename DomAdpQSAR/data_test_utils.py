@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-# from utils import calculate_tanimoto_similarity, calculate_target_similarity, calculate_set_similarity
+from utils import calculate_tanimoto_similarity, calculate_target_similarity, calculate_set_similarity
  
 ### TODO - update to use params
 
@@ -85,7 +85,7 @@ def split_data(dataset, params=None):
 from torch.utils.data import Dataset
 
 #define a function that compiles the datasets based on specifications that we set for various combinations of domains (F, S0, T)
-def dataset_compiler(F_dataset=None, S0_dataset=None, target_dataset=None, percentages=None, rank = None, random_state=42):
+def dataset_compiler(F_dataset=None, S0_dataset=None, target_dataset=None, percentages=None, rank=None, random_state=42):
     """
     Compiles the datasets into a single dataset that can then be loaded into the model
 
@@ -134,23 +134,25 @@ def dataset_compiler(F_dataset=None, S0_dataset=None, target_dataset=None, perce
             dataset.sort_values(by=rank, ascending=False, inplace=True)
     
 
-
+    sampled_datasets = []
     # sample the datasets based on the percentages
     for dataset, percentage in zip(datasets, percentages):
         print("Initial size of dataset: {}".format(len(dataset)))
         print("Sampling {}% of the dataset".format(percentage*100))
         # if ranked sample the top fraction
         if rank is not None:
-            dataset = dataset.head(int(len(dataset)*percentage))
+            sampled_datasets.append(dataset.head(int(len(dataset)*percentage)))
         else:
             # if not ranked sample randomly
-            dataset = dataset.sample(frac=percentage, random_state=random_state)
+            sampled_datasets.append(dataset.sample(frac=percentage, random_state=random_state))
         print("Final size of dataset: {}".format(len(dataset)))
 
 
-    # combine the datasets
-    compiled_dataset = pd.concat(datasets, axis=0)
 
+    # combine the datasets
+    compiled_dataset = pd.concat(sampled_datasets, axis=0, ignore_index=True)
+    # print(compiled_dataset.head())
+    print("Compiled dataset size: {}".format(len(compiled_dataset)))
     return compiled_dataset
 
 

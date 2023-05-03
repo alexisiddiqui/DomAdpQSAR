@@ -7,20 +7,22 @@ import random
 from collections import defaultdict
 import numpy as np
 import pandas as pd
+import os
 from torch.utils.data import DataLoader
 import torch
 from torch import nn
-
+import math
+import datetime
 
 ### move these over to the SR-GAN.DomAdpQSAR folder to setup SRGAN model
 from DomAdpQSAR.models import Classifier
-from DomAdpQSAR.data_test_utils import QSARDataset
+from DomAdpQSAR.data_test_utils import QSARDataset, dataset_compiler
 
 from DomAdpQSAR.srgan import feature_corrcoef
 
 # import DomApdQSAR functions here
 
-from DomAdpQSAR.utility import gpu, seed_all
+from DomAdpQSAR.utility import gpu, seed_all, make_directory_name_unique
 
 
 from DomAdpQSAR.dnn import DnnExperiment
@@ -46,6 +48,7 @@ class DomAdpQSARDNN(DnnExperiment):
         # self.train_dataset = None
         self.validation_dataset = None
         self.test_dataset = None
+        self.compiled_dataset = None
 
         self.federated_dataset_loader = None
         self.clean_dataset_loader = None
@@ -53,10 +56,15 @@ class DomAdpQSARDNN(DnnExperiment):
         self.train_dataset_loader = None
         self.validation_dataset_loader = None
         self.test_dataset_loader = None
+        self.compiled_dataset_loader = None
 
         self.examples = None
 
         self.rank = self.settings.rank
+        ### can probs keep this in the settings rather than including it here
+        # self.gradual_base = self.settings.gradual_base
+        # self.number_of_gradual_steps = self.settings.number_of_gradual_steps
+        
 
     def model_setup(self):
         """Sets up the model."""
@@ -68,15 +76,29 @@ class DomAdpQSARDNN(DnnExperiment):
         rank = self.rank
         settings = self.settings
 
-        self.federated_dataset = QSARDataset(self.federated_dataframe, dataset_size=settings.federated_dataset_size, rank=rank)
-        self.clean_dataset = QSARDataset(self.clean_dataframe, dataset_size=settings.labeled_dataset_size, rank=rank)
-        self.validation_dataset = QSARDataset(self.validation_dataframe, dataset_size=settings.validation_dataset_size)
-        self.test_dataset = QSARDataset(self.test_dataframe, dataset_size=settings.test_dataset_size)
+        self.federated_dataset = QSARDataset(self.federated_dataframe, 
+                                             dataset_size=settings.federated_dataset_size, 
+                                             rank=rank)
+        self.clean_dataset = QSARDataset(self.clean_dataframe, 
+                                         dataset_size=settings.labeled_dataset_size, 
+                                         rank=rank)
+        self.validation_dataset = QSARDataset(self.validation_dataframe, 
+                                              dataset_size=settings.validation_dataset_size)
+        self.test_dataset = QSARDataset(self.test_dataframe, 
+                                        dataset_size=settings.test_dataset_size)
 
-        self.federated_dataset_loader = DataLoader(self.federated_dataset, batch_size=settings.federated_batch_size, shuffle=True)
-        self.clean_dataset_loader = DataLoader(self.clean_dataset, batch_size=settings.batch_size, shuffle=True)
-        self.validation_dataset_loader = DataLoader(self.validation_dataset, batch_size=settings.batch_size, shuffle=True)
-        self.test_dataset_loader = DataLoader(self.test_dataset, batch_size=settings.batch_size, shuffle=True)
+        self.federated_dataset_loader = DataLoader(self.federated_dataset, 
+                                                   batch_size=settings.federated_batch_size, 
+                                                   shuffle=True)
+        self.clean_dataset_loader = DataLoader(self.clean_dataset, 
+                                               batch_size=settings.batch_size, 
+                                               shuffle=True)
+        self.validation_dataset_loader = DataLoader(self.validation_dataset, 
+                                                    batch_size=settings.batch_size, 
+                                                    shuffle=True)
+        self.test_dataset_loader = DataLoader(self.test_dataset, 
+                                              batch_size=settings.batch_size, 
+                                              shuffle=True)
 
 
     def dnn_loss_calculation(self, labeled_examples, labels):
@@ -201,20 +223,9 @@ class DomAdpQSARDNN(DnnExperiment):
     def dnn_training_step(self, examples, labels, step):
         """Runs an individual round of DNN training."""
         # self.DNN.apply(disable_batch_norm_updates)  # No batch norm
-        # if self.examples is None:
-        #     print("Examples is None")
-        #     self.examples = examples
-
-        # for idx, selfex in enumerate(self.examples):
-        #     ex = examples[idx]
-        #     print(ex, selfex)
-        #     if ex != selfex:
-        #         print("Examples not equal")
-        #         print("ex: ", ex)
-        #         print("selfex: ", selfex)
         print("Step: ", step, "No. Ex: ", examples.size(), end='\r')
         self.train_mode()
-        # check if example = example
+
         self.dnn_summary_writer.step = step
         self.dnn_optimizer.zero_grad()
         # print("Examples size: ", examples.size())
@@ -228,8 +239,10 @@ class DomAdpQSARDNN(DnnExperiment):
         if self.dnn_summary_writer.is_summary_step():
             self.dnn_summary_writer.add_scalar('Discriminator/Labeled Loss', dnn_loss.item())
             if hasattr(self.DNN, 'features') and self.DNN.features is not None:
-                self.dnn_summary_writer.add_scalar('Feature Norm/Labeled', self.DNN.features.norm(dim=1).mean().item(),step)
-                self.dnn_summary_writer.add_image('Feature Norm/Labeled', plot_to_image(self.DNN.features))
+                self.dnn_summary_writer.add_scalar('Feature Norm/Labeled', 
+                                                   self.DNN.features.norm(dim=1).mean().item(),step)
+                self.dnn_summary_writer.add_image('Feature Corr/Labeled', 
+                                                  plot_to_image(self.DNN.features), step)
     
 
 
@@ -256,6 +269,102 @@ class DomAdpQSARDNN(DnnExperiment):
         elif self.rank is None:
             self.labeled_criterion = nn.BCELoss()
 
+    def set_summary_step(self, data_loader=None):
+        """Sets the summary step to the size of the training data."""
+        if data_loader is None:
+            data_loader = self.train_dataset_loader
+        self.settings.summary_step_period = len(data_loader)
+
+    def set_training_data(self, data_loader):
+        """Sets the training data loader."""
+        self.train_dataset_loader = data_loader
+        self.set_summary_step()
+
+    def gradual_fine_tune(self, rank=None):
+        """Gradually fine-tunes the DNN on the compiled labelled data. Defaults to no."""
+
+        self.trial_directory = os.path.join(self.settings.logs_directory, self.settings.trial_name)
+        if (self.settings.skip_completed_experiment and os.path.exists(self.trial_directory) and
+                '/check' not in self.trial_directory and not self.settings.continue_existing_experiments):
+            print('`{}` experiment already exists. Skipping...'.format(self.trial_directory))
+            return
+        if not self.settings.continue_existing_experiments:
+            self.trial_directory = make_directory_name_unique(self.trial_directory)
+        else:
+            if os.path.exists(self.trial_directory) and self.settings.load_model_path is not None:
+                raise ValueError('Cannot load from path and continue existing at the same time.')
+            elif self.settings.load_model_path is None:
+                self.settings.load_model_path = self.trial_directory
+            elif not os.path.exists(self.trial_directory):
+                self.settings.continue_existing_experiments = False
+        print(self.trial_directory)
+        os.makedirs(os.path.join(self.trial_directory, self.settings.temporary_directory), exist_ok=True)
+        self.prepare_summary_writers()
+
+        self.set_rank(rank)
+
+        seed_all(0)
+
+        # self.dataset_setup()
+        self.model_setup()
+        self.prepare_optimizers()
+        self.load_models()
+        self.gpu_mode()
+        self.train_mode()
+
+        if self.settings.number_of_gradual_steps is None:
+            number_of_gradual_steps = int(math.log(math.floor(
+                len(self.federated_dataframe) / len(self.clean_dataframe)), 
+                self.settings.gradual_base))
+        else:
+            number_of_gradual_steps = self.settings.number_of_gradual_steps
+        print("Number of gradual steps: ", number_of_gradual_steps)
+        for i in range(number_of_gradual_steps):
+            i = i + 1
+            federated_percentage = 1 / (self.settings.gradual_base ** i)
+            clean_percentage = 1
+            percentages = [federated_percentage, clean_percentage]
+            # print("Percentages: ", percentages)
+            compiled_dataframe = dataset_compiler(F_dataset=self.federated_dataframe, 
+                                                     S0_dataset=self.clean_dataframe, 
+                                                     percentages=percentages,
+                                                     rank=self.rank)
+            # print(compiled_dataframe.columns)
+            self.compiled_dataset = QSARDataset(compiled_dataframe,
+                                                dataset_size=0,
+                                                rank=self.rank)
+            
+            print("Compiled dataset: ", len(self.compiled_dataset))
+
+            self.compiled_dataset_loader = DataLoader(self.compiled_dataset, 
+                                                      batch_size=self.settings.batch_size, 
+                                                      shuffle=True)
+            # print("Compiled dataset loader: ", len(self.compiled_dataset_loader))
+
+            self.set_training_data(self.compiled_dataset_loader)
+
+            step_time_start = datetime.datetime.now()
+
+            for epoch in range(self.settings.gradual_epochs):
+                # hacking the epoch to be the step
+                epoch = epoch * self.settings.summary_step_period
+                step = 0
+
+                for examples, labels in self.train_dataset_loader:
+                    step += 1
+                    step = epoch+step
+                    self.dnn_training_step(examples, labels, step)
+                    if self.dnn_summary_writer.is_summary_step() or step == self.settings.steps_to_run - 1:
+                        print('\rStep {}, {}...'.format(step, datetime.datetime.now() - step_time_start), end='')
+                        step_time_start = datetime.datetime.now()
+                        self.eval_mode()
+                        with torch.no_grad():
+                            self.validation_summaries(step)
+                        self.train_mode()
+                    self.handle_user_input(step)
+
+        # return back to the original ranking from settings
+        self.set_rank(self.settings.rank)
 
 
 

@@ -183,6 +183,7 @@ def train_model(model, train_loader, val_loader, num_epochs=1, lr=0.001, weight_
                 
                 
                 # Forward pass
+                # print(x.shape)
                 outputs = model(x)
                 # reshape y to match output shape
                 y = y.reshape(outputs.shape)
@@ -214,6 +215,8 @@ def train_model(model, train_loader, val_loader, num_epochs=1, lr=0.001, weight_
 
 
                 # Forward pass
+                # print(x.shape)
+
                 outputs = model(x)
                 # reshape y to match output shape
                 y = y.reshape(outputs.shape)
@@ -282,7 +285,7 @@ def train_model(model, train_loader, val_loader, num_epochs=1, lr=0.001, weight_
         val_loss /= len(val_loader)
         val_losses.append(val_loss)
 
-        val_accuracy = np.mean(val_accuracies)
+        val_accuracy = np.mean(val_accuracies[:-3])
 
         # Print loss for epoch
         print(f"Epoch {epoch + 1}: Train loss = {train_loss:.4f}, Val loss = {val_loss:.4f}, Val BAC = {balanced_accuracy:.4f}")

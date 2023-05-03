@@ -203,22 +203,24 @@ def dataset_compiler(F_dataset=None, S0_dataset=None, target_dataset=None, perce
     
 
 
+    sampled_datasets = []
     # sample the datasets based on the percentages
     for dataset, percentage in zip(datasets, percentages):
         print("Initial size of dataset: {}".format(len(dataset)))
         print("Sampling {}% of the dataset".format(percentage*100))
         # if ranked sample the top fraction
         if rank is not None:
-            dataset = dataset.head(int(len(dataset)*percentage))
+            sampled_datasets.append(dataset.head(int(len(dataset)*percentage)))
         else:
             # if not ranked sample randomly
-            dataset = dataset.sample(frac=percentage, random_state=random_state)
+            sampled_datasets.append(dataset.sample(frac=percentage, random_state=random_state))
         print("Final size of dataset: {}".format(len(dataset)))
 
 
-    # combine the datasets
-    compiled_dataset = pd.concat(datasets, axis=0)
 
+    # combine the datasets
+    compiled_dataset = pd.concat(sampled_datasets, axis=0)
+    print("Compiled dataset size: {}".format(len(compiled_dataset)))
     return compiled_dataset
 
 

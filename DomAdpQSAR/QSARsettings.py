@@ -83,6 +83,11 @@ class Settings:
         self.epochs_to_run = 250
         self.rank = None
         self.steps_to_run = int(50000/10000) * self.epochs_to_run
+        # gradual FT
+        self.gradual_base = 2
+        self.number_of_gradual_steps = 3
+        self.gradual_epochs = 10
+
 
 
 
