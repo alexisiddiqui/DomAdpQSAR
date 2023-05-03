@@ -242,7 +242,7 @@ class DomAdpQSARDNN(DnnExperiment):
                 self.dnn_summary_writer.add_scalar('Feature Norm/Labeled', 
                                                    self.DNN.features.norm(dim=1).mean().item(),step)
                 self.dnn_summary_writer.add_image('Feature Corr/Labeled', 
-                                                  plot_to_image(self.DNN.features), step)
+                                                  summwriter_feature_plot(self.DNN.features), step)
     
 
 
@@ -401,7 +401,9 @@ def plot_to_image(figure):
 
     return image
 
-def log_feature_plot(features):
+def summwriter_feature_plot(features):
+    """Plots the features as a correlation matrix
+    and returns the image for summary writer"""
     corr = feature_corrcoef(features.detach())
     imgplot = plt.imshow(corr)
     image = plot_to_image(imgplot)
