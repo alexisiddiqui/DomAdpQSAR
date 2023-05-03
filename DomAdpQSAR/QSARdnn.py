@@ -56,16 +56,20 @@ class DomAdpQSARDNN(DnnExperiment):
 
         self.examples = None
 
+        self.rank = self.settings.rank
+
     def model_setup(self):
         """Sets up the model."""
         self.DNN = Classifier(self.layer_sizes)
 
     def dataset_setup(self):
         """Sets up the datasets for the application."""
+
+        rank = self.rank
         settings = self.settings
 
-        self.federated_dataset = QSARDataset(self.federated_dataframe, dataset_size=settings.federated_dataset_size)
-        self.clean_dataset = QSARDataset(self.clean_dataframe, dataset_size=settings.labeled_dataset_size)
+        self.federated_dataset = QSARDataset(self.federated_dataframe, dataset_size=settings.federated_dataset_size, rank=rank)
+        self.clean_dataset = QSARDataset(self.clean_dataframe, dataset_size=settings.labeled_dataset_size, rank=rank)
         self.validation_dataset = QSARDataset(self.validation_dataframe, dataset_size=settings.validation_dataset_size)
         self.test_dataset = QSARDataset(self.test_dataframe, dataset_size=settings.test_dataset_size)
 
@@ -78,7 +82,14 @@ class DomAdpQSARDNN(DnnExperiment):
     def dnn_loss_calculation(self, labeled_examples, labels):
         """Calculates the labeled loss."""
         predicted_logits = self.DNN(labeled_examples)
-        labeled_loss = self.labeled_criterion(predicted_logits, labels)
+
+        if self.rank is not None:
+            y, r = labels
+            labeled_loss = self.labeled_criterion(predicted_logits, y)
+            labeled_loss = torch.mean(labeled_loss * r)
+        else:
+            labeled_loss = self.labeled_criterion(predicted_logits, labels)
+
         labeled_loss *= self.settings.labeled_loss_multiplier
         return labeled_loss
     
@@ -92,7 +103,10 @@ class DomAdpQSARDNN(DnnExperiment):
         labels = []
         predictions = []
         for data in data_loader:
-            x, y = data
+            try:
+                x, y = data
+            except:
+                x, y, _ = data
 
             prediction = network(x)
             # print("prediction mean: ", prediction.mean())
@@ -216,6 +230,10 @@ class DomAdpQSARDNN(DnnExperiment):
             if hasattr(self.DNN, 'features') and self.DNN.features is not None:
                 self.dnn_summary_writer.add_scalar('Feature Norm/Labeled', self.DNN.features.norm(dim=1).mean().item(),step)
                 self.dnn_summary_writer.add_image('Feature Norm/Labeled', plot_to_image(self.DNN.features))
+    
+
+
+
     def optimizer_to_gpu(self, optimizer):
         """Moves the optimizer to GPU."""
         """changed to skip as no cuda on mac"""
@@ -227,6 +245,22 @@ class DomAdpQSARDNN(DnnExperiment):
                         state[k] = v.cuda()
                     except:
                         pass
+
+
+    def set_rank(self, rank):
+        """Sets the rank of the current experiment."""
+        self.rank = rank
+        self.dataset_setup()
+        if self.rank is not None:
+            self.labeled_criterion = nn.BCELoss(reduction='none')
+        elif self.rank is None:
+            self.labeled_criterion = nn.BCELoss()
+
+
+
+
+
+
 
 import io
 import torch

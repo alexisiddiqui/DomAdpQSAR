@@ -81,7 +81,7 @@ class Settings:
         self.federated_dataset_size = 0
         self.summary_step_period = 50
         self.epochs_to_run = 250
-
+        self.rank = None
         self.steps_to_run = int(50000/10000) * self.epochs_to_run
 
 
