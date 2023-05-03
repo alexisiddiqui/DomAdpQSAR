@@ -88,7 +88,9 @@ class Settings:
         self.number_of_gradual_steps = 3
         self.gradual_epochs = 10
 
-
+        # QSAR SRGAN
+        self.generator_layer_sizes = [2**5, 2**7, 2**9, 2**11, 2**11]
+        self.discriminator_layer_sizes = self.layer_sizes
 
 
 

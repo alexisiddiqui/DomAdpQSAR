@@ -1,10 +1,19 @@
 ### Data and testing functions
 
+import io
+import torch
+import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
+# import matplotlib.image as mpimg
+
 # import FLuID as fluid
 import pandas as pd
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+
+from DomAdpQSAR.srgan import feature_corrcoef
 
 from utils import calculate_tanimoto_similarity, calculate_target_similarity, calculate_set_similarity
  
@@ -278,3 +287,37 @@ def plot_domain_adaptation_stats(stats, title=None, save=False, filename=None):
         stats.to_csv(filename+'.csv')
 
     plt.show()
+
+
+
+def plot_to_image(figure):
+    """
+    Converts the matplotlib plot specified by 'figure' to a PyTorch tensor
+    and returns it. The supplied figure is closed and inaccessible after this call.
+    """
+    # Convert the figure to a NumPy array
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close(figure)
+    buf.seek(0)
+    image_np = np.array(Image.open(buf))
+
+    # Use torchvision.transforms to convert the NumPy array to a PyTorch tensor
+    image_transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+    image = image_transform(image_np)
+
+    # Add the batch dimension using unsqueeze
+    # image = image.unsqueeze(0)
+
+    return image
+
+def summwriter_feature_plot(features):
+    """Plots the features as a correlation matrix
+    and returns the image for summary writer"""
+    corr = feature_corrcoef(features.detach())
+    imgplot = plt.imshow(corr)
+    image = plot_to_image(imgplot)
+    return image
+    

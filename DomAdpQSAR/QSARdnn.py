@@ -16,9 +16,8 @@ import datetime
 
 ### move these over to the SR-GAN.DomAdpQSAR folder to setup SRGAN model
 from DomAdpQSAR.models import Classifier
-from DomAdpQSAR.data_test_utils import QSARDataset, dataset_compiler
+from DomAdpQSAR.data_test_utils import QSARDataset, dataset_compiler, summwriter_feature_plot
 
-from DomAdpQSAR.srgan import feature_corrcoef
 
 # import DomApdQSAR functions here
 
@@ -250,7 +249,7 @@ class DomAdpQSARDNN(DnnExperiment):
     def optimizer_to_gpu(self, optimizer):
         """Moves the optimizer to GPU."""
         """changed to skip as no cuda on mac"""
-
+        ### change this to work with mps
         for state in optimizer.state.values():
             for k, v in state.items():
                 if torch.is_tensor(v):
@@ -371,41 +370,3 @@ class DomAdpQSARDNN(DnnExperiment):
 
 
 
-import io
-import torch
-import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
-from PIL import Image, ImageDraw
-import matplotlib.image as mpimg
-
-def plot_to_image(figure):
-    """
-    Converts the matplotlib plot specified by 'figure' to a PyTorch tensor
-    and returns it. The supplied figure is closed and inaccessible after this call.
-    """
-    # Convert the figure to a NumPy array
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close(figure)
-    buf.seek(0)
-    image_np = np.array(Image.open(buf))
-
-    # Use torchvision.transforms to convert the NumPy array to a PyTorch tensor
-    image_transform = transforms.Compose([
-        transforms.ToTensor(),
-    ])
-    image = image_transform(image_np)
-
-    # Add the batch dimension using unsqueeze
-    # image = image.unsqueeze(0)
-
-    return image
-
-def summwriter_feature_plot(features):
-    """Plots the features as a correlation matrix
-    and returns the image for summary writer"""
-    corr = feature_corrcoef(features.detach())
-    imgplot = plt.imshow(corr)
-    image = plot_to_image(imgplot)
-    return image
-    

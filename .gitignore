@@ -167,3 +167,4 @@ parameters/
 logs/
 .DS_Store
 DomAdpQSAR/__pycache__/
+.vscode/
