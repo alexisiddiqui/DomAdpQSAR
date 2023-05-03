@@ -1,12 +1,12 @@
 ### Data and testing functions
 
-import FLuID as fluid
+# import FLuID as fluid
 import pandas as pd
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from utils import calculate_tanimoto_similarity, calculate_target_similarity, calculate_set_similarity
+# from utils import calculate_tanimoto_similarity, calculate_target_similarity, calculate_set_similarity
  
 ### TODO - update to use params
 
@@ -19,47 +19,38 @@ from utils import calculate_tanimoto_similarity, calculate_target_similarity, ca
 
 # We do need to generate tran/val splits for our generated datasets
 
-def compute_BAC(predictions, labels):
-    """Computes the Balanced Accuracy for the given predictions and labels."""
-    # Convert predictions to binary values (0 or 1)
-    binary_predictions = torch.round(predictions)
-
-    # Compute true positives, true negatives, false positives, and false negatives
-    true_positives = torch.sum(torch.logical_and(binary_predictions == 1, labels == 1))
-    true_negatives = torch.sum(torch.logical_and(binary_predictions == 0, labels == 0))
-    false_positives = torch.sum(torch.logical_and(binary_predictions == 1, labels == 0))
-    false_negatives = torch.sum(torch.logical_and(binary_predictions == 0, labels == 1))
-
-    # print("True Positives: ", true_positives)
-    # print("True Negatives: ", true_negatives)
-    # print("False Positives: ", false_positives)
-    # print("False Negatives: ", false_negatives)
+from torch.utils.data import Dataset
 
 
-    # Compute balanced accuracy using torch tensor division
-    sensitivity = true_positives.float() / (true_positives + false_negatives).float()
-    specificity = true_negatives.float() / (true_negatives + false_positives).float()
-    balanced_accuracy = (sensitivity + specificity) / 2
 
-    return balanced_accuracy
+class QSARDataset(Dataset):
+    def __init__(self, dataframe, rank=None, dataset_size=None, device=None):
+        if dataset_size is not None or 0:
+            self.dataframe = dataframe
+        else:
+            self.dataframe = dataframe.sample(n=dataset_size, random_state=42)
+        self.fp = self.dataframe['FP'].to_numpy()
+        self.labels = self.dataframe['CLASS'].to_numpy()
+        self.ranks = None
+        if rank is not None:
+            self.ranks = self.dataframe[rank].to_numpy()
+        if device is None:
+            self.device = 'cpu'
 
-def compute_ACC(predictions, labels):
-    """Computes the Accuracy (ACC) for the given predictions and labels."""
-    # Convert predictions to binary values (0 or 1)
-    binary_predictions = torch.round(predictions)
-    # print("Binary Predictions: ", binary_predictions)
-    # print("Labels: ", labels)
-    # Compute the number of correct predictions
-    correct_predictions = torch.sum(binary_predictions == labels)
+    def __len__(self):
+        return len(self.dataframe)
 
-    # Compute the total number of predictions
-    total_predictions = labels.size(0)
-    # print("Total Predictions: ", total_predictions)
-    # print("Correct Predictions: ", correct_predictions)
-    # Compute the accuracy
-    accuracy = correct_predictions / total_predictions
+    def __getitem__(self, index):
 
-    return accuracy
+        x = torch.tensor(self.fp[index], dtype=torch.float32, device=self.device)
+        y = torch.tensor(self.labels[index], dtype=torch.float32, device=self.device)
+        
+        if self.ranks is not None:
+            r = torch.tensor(self.ranks[index], dtype=torch.float32, device=self.device)
+            return x, y, r
+        else: 
+            return x, y
+
 
 def split_data(dataset, params=None):
     """
@@ -92,65 +83,6 @@ def split_data(dataset, params=None):
 
 
 from torch.utils.data import Dataset
-
-class MyDataset(Dataset):
-    def __init__(self, dataframe, rank=None, device=None):
-        self.dataframe = dataframe
-        self.fp = self.dataframe['FP'].to_numpy()
-        self.labels = self.dataframe['CLASS'].to_numpy()
-        self.rank = None
-        if rank is not None:
-            self.rank = self.dataframe[rank].to_numpy()
-        if device is None:
-            self.device = 'cpu'
-
-    def __len__(self):
-        return len(self.dataframe)
-
-    def __getitem__(self, index):
-
-        x = torch.tensor(self.fp[index], dtype=torch.float32, device=self.device)
-        y = torch.tensor(self.labels[index], dtype=torch.float32, device=self.device)
-        
-        if self.rank is not None:
-            r = torch.tensor(self.rank[index], dtype=torch.float32, device=self.device)
-            return x, y, r
-        else: 
-            return x, y
-        
-
-class QSARDataset(Dataset):
-    def __init__(self, dataframe, rank=None, dataset_size=None, device=None):
-        if dataset_size is not None or 0:
-            self.dataframe = dataframe
-        else:
-            self.dataframe = dataframe.sample(n=dataset_size)
-        self.fp = self.dataframe['FP'].to_numpy()
-        self.labels = self.dataframe['CLASS'].to_numpy()
-        self.ranks = None
-        if rank is not None:
-            self.ranks = self.dataframe[rank].to_numpy()
-
-        if device is None:
-            self.device = 'cpu'
-
-    def __len__(self):
-        return len(self.dataframe)
-
-    def __getitem__(self, index):
-        x = torch.tensor(self.fp[index], dtype=torch.float32, device=self.device)
-        y = torch.tensor(self.labels[index], dtype=torch.float32, device=self.device)
-        
-        if self.ranks is not None:
-            r = torch.tensor(self.ranks[index], dtype=torch.float32, device=self.device)
-            return x, y, r
-        else: 
-            return x, y
-
-
-
-
-
 
 #define a function that compiles the datasets based on specifications that we set for various combinations of domains (F, S0, T)
 def dataset_compiler(F_dataset=None, S0_dataset=None, target_dataset=None, percentages=None, rank = None, random_state=42):

@@ -164,3 +164,6 @@ data.zip
 model_results/
 model_checkpoints/
 parameters/
+logs/
+.DS_Store
+DomAdpQSAR/__pycache__/
