@@ -32,16 +32,20 @@ class Settings:
         self.contrasting_loss_multiplier = 1e0
         self.srgan_loss_multiplier = 1e0
         self.dggan_loss_multiplier = 1e1
+        # definitely need to try this
         self.gradient_penalty_on = True
+
         self.gradient_penalty_multiplier = 1e1
         self.mean_offset = 0
         self.labeled_loss_order = 2
         self.generator_training_step_period = 1
         self.labeled_dataset_seed = 0
+        # play around with these and batch norm
         self.normalize_fake_loss = False
         self.normalize_feature_norm = False
-        self.contrasting_distance_function = abs_plus_one_sqrt_mean_neg
-        self.matching_distance_function = abs_mean
+        ### play with feature matching function and distance function
+        self.contrasting_distance_function = abs_plus_one_sqrt_mean_neg #
+        self.matching_distance_function = abs_mean 
 
         self.load_model_path = None
         self.should_save_models = True
@@ -80,14 +84,15 @@ class Settings:
         self.federated_batch_size = 10000
         self.federated_dataset_size = 0
         self.summary_step_period = 50
-        self.epochs_to_run = 250
+        self.epochs_to_run = 50
         self.rank = None
         self.steps_to_run = int(50000/10000) * self.epochs_to_run
         # gradual FT
         self.gradual_base = 2
         self.number_of_gradual_steps = 3
         self.gradual_epochs = 10
-
+        self.use_rank_in_GFT_step = False
+        self.freeze_layers = -1
 
 
 

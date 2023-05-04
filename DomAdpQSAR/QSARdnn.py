@@ -15,7 +15,7 @@ import math
 import datetime
 
 ### move these over to the SR-GAN.DomAdpQSAR folder to setup SRGAN model
-from DomAdpQSAR.models import Classifier
+from DomAdpQSAR.models import Classifier, freeze_layers
 from DomAdpQSAR.data_test_utils import QSARDataset, dataset_compiler
 
 from DomAdpQSAR.srgan import feature_corrcoef
@@ -68,12 +68,15 @@ class DomAdpQSARDNN(DnnExperiment):
 
     def model_setup(self):
         """Sets up the model."""
+        
         self.DNN = Classifier(self.layer_sizes)
+        self.freeze_DNN_layers()
 
     def dataset_setup(self):
         """Sets up the datasets for the application."""
 
         rank = self.rank
+        print("dataset rank: ", rank)
         settings = self.settings
 
         self.federated_dataset = QSARDataset(self.federated_dataframe, 
@@ -101,10 +104,10 @@ class DomAdpQSARDNN(DnnExperiment):
                                               shuffle=True)
 
 
+
     def dnn_loss_calculation(self, labeled_examples, labels):
         """Calculates the labeled loss."""
         predicted_logits = self.DNN(labeled_examples)
-
         if self.rank is not None:
             y, r = labels
             labeled_loss = self.labeled_criterion(predicted_logits, y)
@@ -276,13 +279,23 @@ class DomAdpQSARDNN(DnnExperiment):
         self.settings.summary_step_period = len(data_loader)
         print(self.settings.summary_step_period)
 
+    def set_steps_to_run(self, steps_to_run=None):
+        """Sets the number of steps to run."""
+        if steps_to_run is not None:
+            self.settings.steps_to_run = steps_to_run
+        else :
+            self.settings.steps_to_run = self.settings.epochs_to_run * len(self.train_dataset_loader)
+        
+    
     def set_training_data(self, data_loader):
         """Sets the training data loader."""
         self.train_dataset_loader = data_loader
         self.set_summary_step(data_loader=self.train_dataset_loader)
+        self.set_steps_to_run()
+
 
     def gradual_fine_tune(self, rank=None):
-        """Gradually fine-tunes the DNN on the compiled labelled data. Defaults to no."""
+        """Gradually fine-tunes the DNN on the compiled labelled data. Defaults to no subsampling."""
 
         self.trial_directory = os.path.join(self.settings.logs_directory, self.settings.trial_name)
         if (self.settings.skip_completed_experiment and os.path.exists(self.trial_directory) and
@@ -333,6 +346,12 @@ class DomAdpQSARDNN(DnnExperiment):
                                                      percentages=percentages,
                                                      rank=self.rank)
             # print(compiled_dataframe.columns)
+            # if self.settings.use_rank_in_GFT_step is False and self.rank is not None:
+            #     DS_include_rank = None
+            #     print("DS include rank: ", DS_include_rank)
+            # else:
+            #     DS_include_rank = self.rank
+            print(self.rank)
             self.compiled_dataset = QSARDataset(compiled_dataframe,
                                                 dataset_size=0,
                                                 rank=self.rank)
@@ -353,9 +372,22 @@ class DomAdpQSARDNN(DnnExperiment):
                 epoch = epoch * self.settings.summary_step_period
                 
 
-                for examples, labels in self.train_dataset_loader:
+                for samples in self.compiled_dataset_loader:
+                    if self.settings.use_rank_in_GFT_step is False and self.rank is not None:
+                        x, y, _ = samples
+                        examples, labels = x, (y, torch.ones_like(y).to(gpu))
+                    else:
+                        try:
+                            x, y, z = samples
+                            examples, labels = x, (y, z)
+                        except:
+                            examples, labels = samples
+                    
+
+                    # print(samples)
                     step += 1
-                    # step = epoch+step
+                    # This is to account for subsampling and not using rank in the loss calculation
+                    
                     self.dnn_training_step(examples, labels, step)
                     if self.dnn_summary_writer.is_summary_step() or step == self.settings.steps_to_run - 1:
                         print('\rStep {}, {}...'.format(step, datetime.datetime.now() - step_time_start), end='')
@@ -371,6 +403,14 @@ class DomAdpQSARDNN(DnnExperiment):
         print('Completed {}'.format(self.trial_directory))
         if self.settings.should_save_models:
             self.save_models(step=step)
+
+        
+
+    def freeze_DNN_layers(self, layer_index=None):
+        """Freezes all layers up to the specified index."""
+        if layer_index is None:
+            layer_index = self.settings.freeze_layers
+        freeze_layers(self.DNN, layer_index)
 
 
 

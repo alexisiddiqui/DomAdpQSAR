@@ -66,3 +66,23 @@ class Generator(Module):
         return output
 
 
+
+# function to freeze the layers of a model up to a certain layer index
+def freeze_layers(model, layer_index):
+    """
+    Takes in a model and a layer index, and freezes the hidden layers up to that index
+    """
+    # accounts for layers and activations are in the same list as well as for 0 indexing
+    layer_index = ((layer_index +1)*2)
+    for i, param in enumerate(model.hidden.parameters()):
+        # i = i+1
+        if i < layer_index:
+            param.requires_grad = False
+
+    for i, param in enumerate(model.batchnorm.parameters()):
+        # i = i+1
+        if i < layer_index:
+            param.requires_grad = False
+
+    
+    return model            
