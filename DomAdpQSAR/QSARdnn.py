@@ -274,11 +274,12 @@ class DomAdpQSARDNN(DnnExperiment):
         if data_loader is None:
             data_loader = self.train_dataset_loader
         self.settings.summary_step_period = len(data_loader)
+        print(self.settings.summary_step_period)
 
     def set_training_data(self, data_loader):
         """Sets the training data loader."""
         self.train_dataset_loader = data_loader
-        self.set_summary_step()
+        self.set_summary_step(data_loader=self.train_dataset_loader)
 
     def gradual_fine_tune(self, rank=None):
         """Gradually fine-tunes the DNN on the compiled labelled data. Defaults to no."""
@@ -319,6 +320,8 @@ class DomAdpQSARDNN(DnnExperiment):
         else:
             number_of_gradual_steps = self.settings.number_of_gradual_steps
         print("Number of gradual steps: ", number_of_gradual_steps)
+
+        step = 0 + self.starting_step
         for i in range(number_of_gradual_steps):
             i = i + 1
             federated_percentage = 1 / (self.settings.gradual_base ** i)
@@ -348,11 +351,11 @@ class DomAdpQSARDNN(DnnExperiment):
             for epoch in range(self.settings.gradual_epochs):
                 # hacking the epoch to be the step
                 epoch = epoch * self.settings.summary_step_period
-                step = 0
+                
 
                 for examples, labels in self.train_dataset_loader:
                     step += 1
-                    step = epoch+step
+                    # step = epoch+step
                     self.dnn_training_step(examples, labels, step)
                     if self.dnn_summary_writer.is_summary_step() or step == self.settings.steps_to_run - 1:
                         print('\rStep {}, {}...'.format(step, datetime.datetime.now() - step_time_start), end='')
@@ -365,7 +368,9 @@ class DomAdpQSARDNN(DnnExperiment):
 
         # return back to the original ranking from settings
         self.set_rank(self.settings.rank)
-
+        print('Completed {}'.format(self.trial_directory))
+        if self.settings.should_save_models:
+            self.save_models(step=step)
 
 
 
@@ -378,6 +383,8 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 import matplotlib.image as mpimg
 
+
+
 def plot_to_image(figure):
     """
     Converts the matplotlib plot specified by 'figure' to a PyTorch tensor
@@ -386,7 +393,9 @@ def plot_to_image(figure):
     # Convert the figure to a NumPy array
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
-    plt.close(figure)
+    fig = plt.gcf()
+    plt.close(fig)
+    # plt.close(figure)
     buf.seek(0)
     image_np = np.array(Image.open(buf))
 
@@ -394,12 +403,12 @@ def plot_to_image(figure):
     image_transform = transforms.Compose([
         transforms.ToTensor(),
     ])
-    image = image_transform(image_np)
+    image_np = image_transform(image_np)
 
     # Add the batch dimension using unsqueeze
     # image = image.unsqueeze(0)
 
-    return image
+    return image_np
 
 def summwriter_feature_plot(features):
     """Plots the features as a correlation matrix

@@ -166,4 +166,5 @@ model_checkpoints/
 parameters/
 logs/
 .DS_Store
+.vscode/
 DomAdpQSAR/__pycache__/
