@@ -27,12 +27,13 @@ from DomAdpQSAR.QSARdnn import DomAdpQSARDNN
 from DomAdpQSAR.srgan import Experiment, disable_batch_norm_updates
 
 
-class DomAdpQSARSRGAN(DomAdpQSARDNN, Experiment):
+class DomAdpQSARSRGAN(Experiment, DomAdpQSARDNN):
     def __init__(self, settings):
-        super(DomAdpQSARSRGAN, self).__init__(settings)
-        super(Experiment, self).__init__(settings)
+        # super().__init__(settings)
+        # Experiment.__init__(self, settings)
+        # DomAdpQSARDNN.__init__(self, settings)
+        super(DomAdpQSARSRGAN).__init__(settings)
 
-        # super(DomAdpQSARSRGAN).__init__(settings)
         self.generator_layer_sizes = self.settings.generator_layer_sizes
         self.discriminator_layer_sizes = self.settings.discriminator_layer_sizes
         self.generator_features = None
