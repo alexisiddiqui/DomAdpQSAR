@@ -453,7 +453,7 @@ def plot_to_image(figure):
 def summwriter_feature_plot(features):
     """Plots the features as a correlation matrix
     and returns the image for summary writer"""
-    corr = feature_corrcoef(features.detach())
+    corr = feature_corrcoef(features.detach().cpu())
     imgplot = plt.imshow(corr)
     image = plot_to_image(imgplot)
     return image
