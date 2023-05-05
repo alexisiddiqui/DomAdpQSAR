@@ -94,6 +94,9 @@ class Settings:
         self.use_rank_in_GFT_step = False
         self.freeze_layers = -1
 
+        # transfer learning
+        self.transfer_layer_sizes = [2**5, 2**3, 2**10, 2**6, 2**0]
+
 
 
 
