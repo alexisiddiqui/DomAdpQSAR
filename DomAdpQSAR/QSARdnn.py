@@ -15,7 +15,7 @@ import math
 import datetime
 
 ### move these over to the SR-GAN.DomAdpQSAR folder to setup SRGAN model
-from DomAdpQSAR.models import Classifier, freeze_layers
+from DomAdpQSAR.models import Classifier, TF_Classifier, freeze_layers
 from DomAdpQSAR.data_test_utils import QSARDataset, dataset_compiler
 
 from DomAdpQSAR.srgan import feature_corrcoef
@@ -61,14 +61,28 @@ class DomAdpQSARDNN(DnnExperiment):
         self.examples = None
 
         self.rank = self.settings.rank
+        self.featuriser = None
         ### can probs keep this in the settings rather than including it here
         # self.gradual_base = self.settings.gradual_base
         # self.number_of_gradual_steps = self.settings.number_of_gradual_steps
         
+    def load_featuriser(self, path=None):
+        featuriser = DomAdpQSARDNN(self.settings)
+        if path is None:
+            featuriser.settings.load_model_path = self.settings.load_featuriser_path
+        else:
+            featuriser.settings.load_model_path = path
+        self.model_setup(featuriser=featuriser)
 
-    def model_setup(self):
+    def model_setup(self, featuriser:DnnExperiment=None):
         """Sets up the model."""
-        
+        if featuriser is not None:
+            self.featuriser = featuriser.inference_setup()
+            self.featuriser = featuriser.DNN
+
+        if self.featuriser is not None:
+            self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=featuriser)
+
         self.DNN = Classifier(self.layer_sizes)
         self.freeze_DNN_layers()
 
@@ -103,7 +117,30 @@ class DomAdpQSARDNN(DnnExperiment):
                                               batch_size=settings.batch_size, 
                                               shuffle=True)
 
+    def dnn_training_step(self, examples, labels, step):
+        """Runs an individual round of DNN training."""
+        # self.DNN.apply(disable_batch_norm_updates)  # No batch norm
+        print("Step: ", step, "No. Ex: ", examples.size(), end='\r')
+        self.train_mode()
 
+        self.dnn_summary_writer.step = step
+        self.dnn_optimizer.zero_grad()
+        # print("Examples size: ", examples.size())
+        dnn_loss = self.dnn_loss_calculation(examples, labels)
+        self.examples = examples
+
+        # print("DNN loss: ", dnn_loss)
+        dnn_loss.backward()
+        self.dnn_optimizer.step()
+        # Summaries.
+        if self.dnn_summary_writer.is_summary_step():
+            self.dnn_summary_writer.add_scalar('Discriminator/Labeled Loss', dnn_loss.item())
+            if hasattr(self.DNN, 'features') and self.DNN.features is not None:
+                self.dnn_summary_writer.add_scalar('Feature Norm/Labeled', 
+                                                   self.DNN.features.norm(dim=1).mean().item(),step)
+                self.dnn_summary_writer.add_image('Feature Corr/Labeled', 
+                                                  summwriter_feature_plot(self.DNN.features), step)
+    
 
     def dnn_loss_calculation(self, labeled_examples, labels):
         """Calculates the labeled loss."""
@@ -221,33 +258,6 @@ class DomAdpQSARDNN(DnnExperiment):
         accuracy = correct_predictions / total_predictions
 
         return accuracy
-
-        
-    def dnn_training_step(self, examples, labels, step):
-        """Runs an individual round of DNN training."""
-        # self.DNN.apply(disable_batch_norm_updates)  # No batch norm
-        print("Step: ", step, "No. Ex: ", examples.size(), end='\r')
-        self.train_mode()
-
-        self.dnn_summary_writer.step = step
-        self.dnn_optimizer.zero_grad()
-        # print("Examples size: ", examples.size())
-        dnn_loss = self.dnn_loss_calculation(examples, labels)
-        self.examples = examples
-
-        # print("DNN loss: ", dnn_loss)
-        dnn_loss.backward()
-        self.dnn_optimizer.step()
-        # Summaries.
-        if self.dnn_summary_writer.is_summary_step():
-            self.dnn_summary_writer.add_scalar('Discriminator/Labeled Loss', dnn_loss.item())
-            if hasattr(self.DNN, 'features') and self.DNN.features is not None:
-                self.dnn_summary_writer.add_scalar('Feature Norm/Labeled', 
-                                                   self.DNN.features.norm(dim=1).mean().item(),step)
-                self.dnn_summary_writer.add_image('Feature Corr/Labeled', 
-                                                  summwriter_feature_plot(self.DNN.features), step)
-    
-
 
 
     def optimizer_to_gpu(self, optimizer):

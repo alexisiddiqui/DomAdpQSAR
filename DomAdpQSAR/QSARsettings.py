@@ -96,6 +96,7 @@ class Settings:
 
         # transfer learning
         self.transfer_layer_sizes = [2**5, 2**3, 2**10, 2**6, 2**0]
+        self.load_featuriser_path = "logs/BT Underfit + Gradual Subsampling 25 Epochs/"
 
 
 

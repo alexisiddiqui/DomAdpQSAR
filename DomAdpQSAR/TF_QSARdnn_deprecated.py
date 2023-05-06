@@ -30,11 +30,12 @@ from DomAdpQSAR.QSARdnn import DomAdpQSARDNN
 from DomAdpQSAR.QSARsettings import Settings
 settings = Settings()
 model = DomAdpQSARDNN(settings)
-model.settings.load_model_path = "logs/Broad Tuning Underfit/"
-model.model_setup()
+model.settings.load_model_path = "logs/BT Underfit + Gradual Subsampling 25 Epochs/"
+model.DNN
 featuriser = model.DNN
 
 class TF_DomAdpQSARDNN(DomAdpQSARDNN):
+
     def model_setup(self):
         """Sets up the model."""
         self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=featuriser)

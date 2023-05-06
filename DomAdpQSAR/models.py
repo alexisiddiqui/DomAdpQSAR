@@ -41,7 +41,7 @@ class Classifier(Module):
 
 
 class TF_Classifier(torch.nn.Module):
-    def __init__(self, layersize=[2**5, 2**11, 2**9, 2**7, 2**0], dropout=0.33, featuriser=None):
+    def __init__(self, layersize=[2**5, 2**3, 2**10, 2**6, 2**0], dropout=0.33, featuriser=None):
         super(TF_Classifier, self).__init__()
         self.hidden = nn.ModuleList()
         self.batchnorm = nn.ModuleList()
@@ -66,8 +66,10 @@ class TF_Classifier(torch.nn.Module):
 
 
     def forward(self, x):
-        _ = self.featuriser(x)
-        x = self.featuriser.features
+        if self.featuriser is not None:
+            _ = self.featuriser(x)
+            x = self.featuriser.features
+
         for idx, layer in enumerate(self.hidden):
             # print(f"hidden layer {idx} output shape: {x.shape}")
             x = F.relu(self.hidden[idx](x))
