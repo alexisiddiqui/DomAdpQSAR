@@ -8,7 +8,6 @@ from enum import Enum
 import os
 from DomAdpQSAR.utility import abs_plus_one_sqrt_mean_neg, abs_mean
 
-
 class Settings:
     """Represents the settings for a given run of SRGAN."""
     def __init__(self):
@@ -17,7 +16,7 @@ class Settings:
         self.temporary_directory = 'temporary'
         self.logs_directory = 'logs'
         self.batch_size = 1000
-        self.summary_step_period = 2000
+        self.summary_step_period = 100
 
         self.labeled_dataset_size = 0
         self.unlabeled_dataset_size = 0
@@ -27,22 +26,23 @@ class Settings:
         self.learning_rate = 1e-4
         self.weight_decay = 0
 
-        self.labeled_loss_multiplier = 1e0
+        self.labeled_loss_multiplier = 1e1
         self.matching_loss_multiplier = 1e0
         self.contrasting_loss_multiplier = 1e0
-        self.srgan_loss_multiplier = 1e0
-        self.dggan_loss_multiplier = 1e1
-        # definitely need to try this
+        self.srgan_loss_multiplier = 1e1
+        # self.dggan_loss_multiplier = 1e-1
+        self.dnn_loss_multiplier = 1e-1
+        # doesnt seem to do anythiing
         self.gradient_penalty_on = True
 
-        self.gradient_penalty_multiplier = 1e1
+        self.gradient_penalty_multiplier = 1e4
         self.mean_offset = 0
         self.labeled_loss_order = 2
         self.generator_training_step_period = 1
         self.labeled_dataset_seed = 0
         # play around with these and batch norm
-        self.normalize_fake_loss = False
-        self.normalize_feature_norm = False
+        self.normalize_fake_loss = False # doesnt do anything
+        self.normalize_feature_norm = False #best as False
         ### play with feature matching function and distance function
         self.contrasting_distance_function = abs_plus_one_sqrt_mean_neg #
         self.matching_distance_function = abs_mean 
@@ -75,7 +75,7 @@ class Settings:
 
 
         # QSAR application
-        self.layer_sizes = [2**11, 2**9, 2**6, 2**5, 2**0]
+        self.layer_sizes = [2**11, 2**11, 2**11, 2**5, 2**0]
         self.data_dir = 'data'
         self.federated_datapath = os.path.join(self.data_dir, 'federated_data_ranked.pkl')
         self.clean_datapath = os.path.join(self.data_dir, 'clean_data_ranked.pkl')
@@ -84,22 +84,25 @@ class Settings:
         self.federated_batch_size = 10000
         self.federated_dataset_size = 0
         self.summary_step_period = 50
-        self.epochs_to_run = 50
+        self.epochs_to_run = 200
         self.rank = None
         self.steps_to_run = int(50000/10000) * self.epochs_to_run
         # gradual FT
-        self.gradual_base = 2
+        self.gradual_base = 0.5
         self.number_of_gradual_steps = 3
         self.gradual_epochs = 10
         self.use_rank_in_GFT_step = False
         self.freeze_layers = -1
 
         # transfer learning
-        self.transfer_layer_sizes = [2**5, 2**3, 2**10, 2**6, 2**0]
+        self.transfer_layer_sizes = [2**5, 2**3, 2**10, 2**5, 2**0]
         self.load_featuriser_path = "logs/BT Underfit + Gradual Subsampling 25 Epochs/"
 
-
-
+        # SRGAN
+        self.generator_layer_sizes = [2**2, 2**11]
+        # need to implement
+        self.use_feature_covariance = False
+        self.use_feature_angle = True
 
     def local_setup(self):
         """Code to override some settings when debugging on the local (low power) machine."""

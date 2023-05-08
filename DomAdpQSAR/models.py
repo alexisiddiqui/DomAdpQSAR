@@ -85,14 +85,14 @@ class TF_Classifier(torch.nn.Module):
 
 class Generator(Module):
     """MLP Based Generator"""
-    def __init__(self, layersize=[2**6, 2**7, 2**9, 2**11, 2**11], dropout=0.33):
+    def __init__(self, layersize=[2**5, 2**7, 2**9, 2**11, 2**11], dropout=0.33):
         super().__init__()
         seed_all(0)
         self.hidden = nn.ModuleList()
         self.batchnorm = nn.ModuleList()
         self.dropout = dropout
         self.features = None
-
+        self.input_size = layersize[0]
         for idx, layer in enumerate(layersize[:-2]):
             self.hidden.append(nn.Linear(layersize[idx], layersize[idx+1]))
             self.batchnorm.append(nn.BatchNorm1d(layersize[idx+1]))
@@ -109,7 +109,8 @@ class Generator(Module):
             self.features = x
           
         output = torch.sigmoid(self.output(x))  # apply sigmoid activation to output layer for binary classification
-    
+        # round to 0 or 1
+        output = torch.round(output)
         return output
 
 

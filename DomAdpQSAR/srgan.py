@@ -324,6 +324,7 @@ class Experiment(ABC):
         predicted_labels = self.DNN(labeled_examples)
         labeled_loss = self.labeled_loss_function(predicted_labels, labels, order=self.settings.labeled_loss_order)
         labeled_loss *= self.settings.labeled_loss_multiplier
+        # labeled_loss *= self.settings.dnn_loss_multiplier
         return labeled_loss
 
     def labeled_loss_calculation(self, labeled_examples, labels):
@@ -332,6 +333,7 @@ class Experiment(ABC):
         self.labeled_features = self.D.features
         labeled_loss = self.labeled_loss_function(predicted_labels, labels, order=self.settings.labeled_loss_order)
         labeled_loss *= self.settings.labeled_loss_multiplier
+        # labeled_loss *= self.settings.srgan_loss_multiplier
         return labeled_loss
 
     def unlabeled_loss_calculation(self, labeled_examples: Tensor, unlabeled_examples: Tensor):
@@ -500,12 +502,15 @@ def feature_distance_loss_both_unmeaned(base_features, other_features, distance_
     return distance_vector.mean()
 
 
-def feature_angle_loss(base_features, other_features, target=0, summary_writer=None):
+def feature_angle_loss(base_features, other_features, target=0, summary_writer: SummaryWriter = None, distance_function=None):
     """Calculate the loss based on the angle between feature vectors."""
     angle = angle_between(base_features.mean(0), other_features.mean(0))
     if summary_writer:
-        summary_writer.add_scalar('Feature Vector/Angle', angle.item(), )
-    return (angle - target).abs().pow(2)
+        summary_writer.add_scalar('Feature Vector/Angle', angle.item(), summary_writer.step )
+    if distance_function is None:
+        return (angle - target).abs().pow(2)
+    else:
+        return distance_function(angle - target)
 
 
 def feature_corrcoef(x):

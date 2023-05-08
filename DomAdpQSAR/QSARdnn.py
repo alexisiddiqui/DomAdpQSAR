@@ -22,7 +22,7 @@ from DomAdpQSAR.srgan import feature_corrcoef
 
 # import DomApdQSAR functions here
 
-from DomAdpQSAR.utility import gpu, seed_all, make_directory_name_unique
+from DomAdpQSAR.utility import gpu, seed_all, make_directory_name_unique, SummaryWriter
 
 
 from DomAdpQSAR.dnn import DnnExperiment
@@ -74,7 +74,7 @@ class DomAdpQSARDNN(DnnExperiment):
             featuriser.settings.load_model_path = path
         self.model_setup(featuriser=featuriser)
 
-    def model_setup(self, featuriser:DnnExperiment=None):
+    def model_setup(self, featuriser: DnnExperiment = None):
         """Sets up the model."""
         if featuriser is not None:
             self.featuriser = featuriser.inference_setup()
@@ -82,8 +82,8 @@ class DomAdpQSARDNN(DnnExperiment):
 
         if self.featuriser is not None:
             self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=featuriser)
-
-        self.DNN = Classifier(self.layer_sizes)
+        else:
+            self.DNN = Classifier(self.layer_sizes)
         self.freeze_DNN_layers()
 
     def dataset_setup(self):
@@ -210,7 +210,7 @@ class DomAdpQSARDNN(DnnExperiment):
 
     def predict_activiity(self, fp):
         """Predicts the activity of a given fingerprint."""
-
+        ## Not tested
         self.inference_setup()
 
         fp = torch.from_numpy(fp).float().to(gpu)
@@ -347,7 +347,7 @@ class DomAdpQSARDNN(DnnExperiment):
         step = 0 + self.starting_step
         for i in range(number_of_gradual_steps):
             i = i + 1
-            federated_percentage = 1 / (self.settings.gradual_base ** i)
+            federated_percentage = self.settings.gradual_base ** i
             clean_percentage = 1
             percentages = [federated_percentage, clean_percentage]
             # print("Percentages: ", percentages)
@@ -464,6 +464,7 @@ def summwriter_feature_plot(features):
     """Plots the features as a correlation matrix
     and returns the image for summary writer"""
     corr = feature_corrcoef(features.detach().cpu())
+    # print("Correlation matrix: ", corr.shape)
     imgplot = plt.imshow(corr)
     image = plot_to_image(imgplot)
     return image
