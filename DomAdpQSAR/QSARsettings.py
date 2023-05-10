@@ -88,7 +88,7 @@ class Settings:
         self.rank = None
         self.steps_to_run = int(50000/10000) * self.epochs_to_run
         # gradual FT
-        self.gradual_base = 2
+        self.gradual_base = 0.5
         self.number_of_gradual_steps = 3
         self.gradual_epochs = 10
         self.use_rank_in_GFT_step = False

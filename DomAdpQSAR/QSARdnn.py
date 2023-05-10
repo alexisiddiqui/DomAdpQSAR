@@ -347,7 +347,7 @@ class DomAdpQSARDNN(DnnExperiment):
         step = 0 + self.starting_step
         for i in range(number_of_gradual_steps):
             i = i + 1
-            federated_percentage = 1 / (self.settings.gradual_base ** i)
+            federated_percentage = (self.settings.gradual_base ** i)
             clean_percentage = 1
             percentages = [federated_percentage, clean_percentage]
             # print("Percentages: ", percentages)
