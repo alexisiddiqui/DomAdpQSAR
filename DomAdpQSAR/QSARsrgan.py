@@ -126,8 +126,8 @@ class DomAdpQSARSRGAN(Experiment):
 
     def set_rank(self, rank):
         """Sets the rank of the current process."""
-        self.rank = None
-        raise NotImplementedError
+        # self.rank = None
+        # raise NotImplementedError
         # To be implemented later
         self.rank = rank
         self.dataset_setup()

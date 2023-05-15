@@ -1,15 +1,12 @@
 ### Data and testing functions
 
 # import FLuID as fluid
-from typing import Any
 import pandas as pd
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from utils import calculate_tanimoto_similarity, calculate_target_similarity
-
-from DomAdpQSAR.utility import gpu
+from utils import calculate_tanimoto_similarity, calculate_target_similarity, calculate_set_similarity
  
 ### TODO - update to use params
 
@@ -27,44 +24,21 @@ from torch.utils.data import Dataset
 
 
 class QSARDataset(Dataset):
-    def __init__(self, dataframe, rank=None, dataset_size=None, device=gpu):
-        if dataset_size is not None or 0:
+    def __init__(self, dataframe, rank=None, dataset_size=None, device=None):
+        if dataframe is not None:
             self.dataframe = dataframe
-        else:
-            self.dataframe = dataframe.sample(n=dataset_size, random_state=42)
+        if dataset_size is not (None or 0):
+            self.dataframe = dataframe.sample(n=dataset_size, random_state=42, replace=True)
         self.fp = self.dataframe['FP'].to_numpy()
         self.labels = self.dataframe['CLASS'].to_numpy()
-
-        fp = self.fp
-        fp = [f.astype(np.float32)for f in fp]
-        fp = np.array(fp)
-        fp = torch.from_numpy(fp)
-
-        self.FP = fp
-        labels = self.labels
-        labels = [l.astype(np.float32) for l in labels]
-        labels = np.array(labels)
-        labels = torch.from_numpy(labels)
-
-        self.LABELS = labels
-
-
-
-        # self.FP = torch.from_numpy(self.fp).to(device)
-        # self.LABELS = torch.from_numpy(self.labels).to(device)
         self.ranks = None
         if rank is not None:
             self.ranks = self.dataframe[rank].to_numpy()
         if device is None:
             self.device = 'cpu'
-        else:
-            self.device = device
 
     def __len__(self):
         return len(self.dataframe)
-    
-    def __call__(self):
-        return self.dataframe
 
     def __getitem__(self, index):
 
@@ -164,13 +138,13 @@ def dataset_compiler(F_dataset=None, S0_dataset=None, target_dataset=None, perce
     # sample the datasets based on the percentages
     for dataset, percentage in zip(datasets, percentages):
         print("Initial size of dataset: {}".format(len(dataset)))
-        print("Sampling {}% of the dataset".format(percentage*100))
+        print("Sampling {}% of the dataset".format(int(percentage)*100))
         # if ranked sample the top fraction
         if rank is not None:
             sampled_datasets.append(dataset.head(int(len(dataset)*percentage)))
         else:
             # if not ranked sample randomly
-            sampled_datasets.append(dataset.sample(frac=int(percentage*100)/100, random_state=random_state))
+            sampled_datasets.append(dataset.sample(frac=percentage, random_state=random_state))
         print("Final size of dataset: {}".format(len(dataset)))
 
 
@@ -304,5 +278,3 @@ def plot_domain_adaptation_stats(stats, title=None, save=False, filename=None):
         stats.to_csv(filename+'.csv')
 
     plt.show()
-
-

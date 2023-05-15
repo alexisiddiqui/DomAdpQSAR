@@ -75,14 +75,14 @@ class Settings:
 
 
         # QSAR application
-        self.layer_sizes = [2**11, 2**11, 2**11, 2**5, 2**0]
+        self.layer_sizes = [2**11, 2**9, 2**7, 2**5, 2**0]
         self.data_dir = 'data'
         self.federated_datapath = os.path.join(self.data_dir, 'federated_data_ranked.pkl')
         self.clean_datapath = os.path.join(self.data_dir, 'clean_data_ranked.pkl')
         self.validation_datapath = os.path.join(self.data_dir, 'validation_data.pkl')
         self.test_datapath = os.path.join(self.data_dir, 'test_data.pkl')
         self.federated_batch_size = 10000
-        self.federated_dataset_size = 0
+        self.federated_dataset_size = 50000
         self.summary_step_period = 50
         self.epochs_to_run = 200
         self.rank = None
