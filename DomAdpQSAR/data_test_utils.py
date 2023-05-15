@@ -31,14 +31,37 @@ class QSARDataset(Dataset):
             self.dataframe = dataframe.sample(n=dataset_size, random_state=42, replace=True)
         self.fp = self.dataframe['FP'].to_numpy()
         self.labels = self.dataframe['CLASS'].to_numpy()
+
+        fp = self.fp
+        fp = [f.astype(np.float32)for f in fp]
+        fp = np.array(fp)
+        fp = torch.from_numpy(fp)
+
+        self.FP = fp
+        labels = self.labels
+        labels = [l.astype(np.float32) for l in labels]
+        labels = np.array(labels)
+        labels = torch.from_numpy(labels)
+
+        self.LABELS = labels
+
+
+
+        # self.FP = torch.from_numpy(self.fp).to(device)
+        # self.LABELS = torch.from_numpy(self.labels).to(device)
         self.ranks = None
         if rank is not None:
             self.ranks = self.dataframe[rank].to_numpy()
         if device is None:
             self.device = 'cpu'
+        else:
+            self.device = device
 
     def __len__(self):
         return len(self.dataframe)
+    
+    def __call__(self):
+        return self.dataframe
 
     def __getitem__(self, index):
 
