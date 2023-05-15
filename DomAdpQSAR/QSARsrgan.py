@@ -76,8 +76,8 @@ class DomAdpQSARSRGAN(Experiment):
             self.featuriser = featuriser.D
 
         if self.featuriser is not None:
-            self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=featuriser)
-            self.D = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=featuriser)
+            self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=self.featuriser)
+            self.D = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=self.featuriser)
         else:  
             self.DNN = Classifier(self.settings.layer_sizes)
             self.D = Classifier(self.settings.layer_sizes)

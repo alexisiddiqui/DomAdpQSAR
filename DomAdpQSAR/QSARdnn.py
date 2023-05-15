@@ -81,7 +81,7 @@ class DomAdpQSARDNN(DnnExperiment):
             self.featuriser = featuriser.DNN
 
         if self.featuriser is not None:
-            self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=featuriser)
+            self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=self.featuriser)
         else:
             self.DNN = Classifier(self.layer_sizes)
         self.freeze_DNN_layers()
