@@ -42,7 +42,7 @@ class Settings:
         self.labeled_dataset_seed = 0
         # play around with these and batch norm
         self.normalize_fake_loss = False # doesnt do anything
-        self.normalize_feature_norm = False #best as False
+        self.normalize_feature_norm = True #best as False with Angle
         ### play with feature matching function and distance function
         self.contrasting_distance_function = abs_plus_one_sqrt_mean_neg #
         self.matching_distance_function = abs_mean 
@@ -102,7 +102,7 @@ class Settings:
         self.generator_layer_sizes = [2**2, 2**11]
         # need to implement
         self.use_feature_covariance = False
-        self.use_feature_angle = True
+        self.use_feature_angle = False
 
     def local_setup(self):
         """Code to override some settings when debugging on the local (low power) machine."""

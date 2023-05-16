@@ -77,7 +77,7 @@ class DomAdpQSARDNN(DnnExperiment):
     def model_setup(self, featuriser: DnnExperiment = None):
         """Sets up the model."""
         if featuriser is not None:
-            self.featuriser = featuriser.inference_setup()
+            self.featuriser = featuriser.eval_mode()
             self.featuriser = featuriser.DNN
 
         if self.featuriser is not None:

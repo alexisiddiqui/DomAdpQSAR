@@ -25,6 +25,8 @@ from DomAdpQSAR.srgan import feature_covariance_loss, feature_corrcoef, feature_
 
 from DomAdpQSAR.utility import gpu, seed_all, make_directory_name_unique, MixtureModel, SummaryWriter, standard_image_format_to_tensorboard_image_format
 from DomAdpQSAR.QSARdnn import summwriter_feature_plot
+
+from DomAdpQSAR.dnn import DnnExperiment
 from DomAdpQSAR.srgan import Experiment
 
 
@@ -62,20 +64,28 @@ class DomAdpQSARSRGAN(Experiment):
 
     def load_featuriser(self, path=None):
         settings = copy.deepcopy(self.settings)
+        settings.layer_sizes[2] = 2**6
         featuriser = DomAdpQSARDNN(settings)
         if path is None:
             featuriser.settings.load_model_path = self.settings.load_featuriser_path
         else:
             featuriser.settings.load_model_path = path
+        print("Loading featuriser...")
+        print(f"Featuriser path: {featuriser.settings.load_model_path}")
+
         self.model_setup(featuriser=featuriser)
 
+        print("Featuriser loaded.")
 
-    def model_setup(self, featuriser: Experiment=None):
+    def model_setup(self, featuriser: DomAdpQSARDNN=None):
         if featuriser is not None:
-            self.featuriser = featuriser.inference_setup()
-            self.featuriser = featuriser.D
+            print("Setting up SR-GAN with featuriser...1")
+            featuriser.model_setup()
+            self.featuriser = featuriser.eval_mode()
+            self.featuriser = featuriser.DNN
 
         if self.featuriser is not None:
+            print("Setting up SR-GAN with featuriser...2")
             self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=self.featuriser)
             self.D = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=self.featuriser)
         else:  
