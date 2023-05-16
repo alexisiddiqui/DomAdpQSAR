@@ -13,6 +13,7 @@ import torch
 from torch import nn
 import math
 import datetime
+import copy
 
 ### move these over to the SR-GAN.DomAdpQSAR folder to setup SRGAN model
 from DomAdpQSAR.models import Classifier, TF_Classifier, freeze_layers
@@ -67,23 +68,33 @@ class DomAdpQSARDNN(DnnExperiment):
         # self.number_of_gradual_steps = self.settings.number_of_gradual_steps
         
     def load_featuriser(self, path=None):
-        featuriser = DomAdpQSARDNN(self.settings)
+        settings = copy.deepcopy(self.settings)
+        settings.layer_sizes[2] = 2**6
+        featuriser = DomAdpQSARDNN(settings)
         if path is None:
             featuriser.settings.load_model_path = self.settings.load_featuriser_path
         else:
             featuriser.settings.load_model_path = path
+        print("Loading featuriser...")
+        print(f"Featuriser path: {featuriser.settings.load_model_path}")
+
         self.model_setup(featuriser=featuriser)
 
-    def model_setup(self, featuriser: DnnExperiment = None):
-        """Sets up the model."""
+        print("Featuriser loaded.")
+
+    def model_setup(self, featuriser: DnnExperiment=None):
         if featuriser is not None:
+            print("Setting up SR-GAN with featuriser...1")
+            featuriser.model_setup()
             self.featuriser = featuriser.eval_mode()
             self.featuriser = featuriser.DNN
 
         if self.featuriser is not None:
+            print("Setting up SR-GAN with featuriser...2")
             self.DNN = TF_Classifier(self.settings.transfer_layer_sizes, featuriser=self.featuriser)
-        else:
-            self.DNN = Classifier(self.layer_sizes)
+        else:  
+            self.DNN = Classifier(self.settings.layer_sizes)
+
         self.freeze_DNN_layers()
 
     def dataset_setup(self):
