@@ -168,3 +168,4 @@ logs/
 .DS_Store
 .vscode/
 DomAdpQSAR/__pycache__/
+AXtuning/
