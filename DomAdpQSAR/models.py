@@ -106,7 +106,7 @@ class Generator(Module):
             x = F.relu(self.hidden[idx](x))
             x = F.dropout(x, self.dropout, training=self.training)
             x = self.batchnorm[idx](x)
-            self.features = x
+        self.features = x
           
         output = torch.sigmoid(self.output(x))  # apply sigmoid activation to output layer for binary classification
         # round to 0 or 1

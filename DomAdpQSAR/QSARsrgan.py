@@ -290,6 +290,7 @@ class DomAdpQSARSRGAN(Experiment):
         fake_loss.backward()
         # Gradient penalty.
         gradient_penalty = self.gradient_penalty_calculation(fake_examples, unlabeled_examples)
+        print("Gradient penalty: ", gradient_penalty.detach().numpy())
         gradient_penalty.backward()
         # Discriminator update.
         self.d_optimizer.step()
@@ -433,8 +434,8 @@ class DomAdpQSARSRGAN(Experiment):
         dnn_test_values = self.evaluation_epoch(DNN, self.test_dataset, dnn_summary_writer, '3 Test Error')
         gan_test_values = self.evaluation_epoch(D, self.test_dataset, gan_summary_writer, '3 Test Error')
         # Just so we are actually using the values
-        print("DNN Test Values: ", dnn_test_values)
-        print("GAN Test Values: ", gan_test_values)
+        print("DNN Test Values: ", dnn_test_values, end="\r")
+        print("GAN Test Values: ", gan_test_values, end="\r")
         z = torch.tensor(MixtureModel([norm(-settings.mean_offset, 1), norm(settings.mean_offset, 1)]).rvs(
             size=[settings.batch_size, G.input_size]).astype(np.float32)).to(gpu)
         
