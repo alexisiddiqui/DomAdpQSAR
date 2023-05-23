@@ -169,3 +169,6 @@ logs/
 .vscode/
 DomAdpQSAR/__pycache__/
 AXtuning/
+
+*.pkl
+*.parquet
